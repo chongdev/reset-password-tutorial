@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Password</title>
+
+    <!-- <script nonce src="js/pass-strength.min.js" async defer></script> -->
+    <script src="js/pass-strength.js"></script>
+    <link rel="stylesheet" href="css/style.css?v=0.39.2">
+    
+    <style>
+        .pm-main-reset-password {
+          margin: 100px auto;
+        }
+  
+        .pm-main-reset-password .pm-card {
+          position: relative;
+          margin: auto;
+        }
+  
+        .pm-main-reset-password .pm-card .pm-logo {
+          position: absolute;
+          top: -50px;
+          left: 0;
+          right: 0;
+          margin: 0 auto;
+        }
+  
+        .pm-main-reset-password .pm-card .heading {
+          text-align: center;
+          padding: 80px 0 32px;
+        }
+  
+        .pm-main-reset-password .pm-card .heading h4 {
+          font-size: 18px;
+          font-weight: bold;
+          color: #282828;
+          display: inline-block;
+          margin: 0;
+        }
+  
+        .pm-main-reset-password .pm-card .heading .message {
+          margin: 16px 0 0;
+          line-height: 1.71;
+          color: #808080;
+          text-align: start;
+          opacity: .8;
+        }
+  
+        .pm-main-reset-password .pm-card form {
+          margin-bottom: 16px;
+        }
+      </style>
+
+</head>
+<body>
+    <div>
+
+        <div class="pm-main-reset-password">
+            <div class="pm-card">
+    
+              <div class="pm-logo"></div>
+    
+              <div class="heading">
+                <h4>Reset your password</h4>
+                <p class="message">Enter your new password to continue.  You will be logged out of all your active sessions.</p>
+              </div>
+    
+              <div id="notification-div" class="notify-failure notification-container">
+                <span id="notification-message"></span>
+              </div>
+    
+              <form id="reset-password-form">
+                <div class="pm-form-group">
+                  <label for="password" class="pm-form-label">New Password
+                    <span id="show-password" class="show-password">SHOW</span>
+                  </label>
+    
+                  <input type="password" class="pm-form-control" id="password" name="password" autofocus="">
+                  <span id="input-error-password" class="input-validation-error" style="display: none;"></span>
+    
+                  <div class="pm-password-strength-indicator" style="visibility: hidden;">
+                    <div class="pm-password-strength-pointer"></div>
+                    <div class="pm-password-strength">
+                      <div class="pm-password-strength-content">
+                        <div class="strength-title">Password Strength: </div>
+                        <div class="strength-text" id="password-strength-text"></div>
+                        <svg class="strength-progress" width="210px" height="10px">
+                          <line x1="0" y1="5" x2="210" y2="5" stroke-width="4px" stroke-linecap="round" class="strength-progress-background"></line>
+                          <line x1="0" y1="5" x2="46%" y2="5" stroke-width="4px" stroke-linecap="round" class="strength-progress-foreground" id="password-strength-progress-foreground"></line>
+                        </svg>
+                        <div class="strength-description">Passwords should be at least 7 characters long. Try using uncommon words or inside jokes, non-standard uppercasing, creative spelllling, and non-obvious numbers and symbols.</div>
+                      </div>
+                    </div>
+                  </div>
+    
+                </div>
+    
+                <div class="pm-form-group">
+                  <button type="submit" class="pm-btn pm-btn-primary" id="reset-pwd-btn">Reset Password</button>
+                </div>
+    
+                <input type="hidden" name="csrfToken" value="VwdpXP8FVQzKAwwd9lhm42tIm/UX5KyyEmrtY=">
+              </form>
+            </div>
+          </div>
+    </div>
+
+    <script>
+        var resetPasswordForm = document.getElementById('reset-password-form'),
+            showPasswordElement = document.getElementById('show-password'),
+            notificationDiv = document.getElementById('notification-div'),
+            notificationMsgElement = document.getElementById('notification-message'),
+            passwordElement = document.getElementById('password'),
+            inputErrorPasswordElement = document.getElementById('input-error-password'),
+            resetPwdBtn = document.getElementById('reset-pwd-btn'),
+            DEFAULT_ERROR_MESSAGE = 'Something went wrong. Please refresh the page and try again.';
+  
+        function linkMarkupToHTML (markupText) {
+          var pattern = /\[([^[\]]+)\|([^[\]]+)\]/g,
+            replacementString = '<a href="$2">$1</a>';
+  
+          return markupText.replace(pattern, replacementString);
+        }
+  
+        function hideInlineNotification(inputElement, inlineMessageElement) {
+          inputElement && inputElement.classList.remove('border-failure');
+          inlineMessageElement && (inlineMessageElement.style.display = 'none');
+  
+          return false;
+        }
+  
+        function showInlineNotification(inputElement, inlineMsgElement, message) {
+          inputElement && inputElement.classList.add('border-failure');
+          inlineMsgElement && (inlineMsgElement.style.display = 'block');
+          inlineMsgElement.innerHTML = linkMarkupToHTML(message);
+  
+          return false;
+        }
+  
+        function showGlobalNotification(notificationElement, notificationMsgElement, message) {
+          notificationMsgElement.innerHTML = linkMarkupToHTML(message);
+          notificationElement && (notificationElement.style.display = 'block');
+        }
+  
+        function hideGlobalNotification(notificationElement) {
+          notificationElement && (notificationElement.style.display = 'none');
+        }
+  
+        function clearError(element) {
+          var inlineMsgElement = document.getElementById('input-error-' + element.id);
+  
+          element && element.classList.remove('border-failure');
+          inlineMsgElement && (inlineMsgElement.style.display = 'none');
+        }
+  
+        function validatePassword (element) {
+          var value = element.value,
+            error = null;
+  
+          if (!value) {
+            error = 'Please enter a new password.';
+          }
+          else if (value.length <= 6) {
+            error = 'Use a password that\'s at least 7 characters – it helps keep your account secure.';
+          }
+          else if (value.length > 64) {
+            error = 'Wow. That’s the longest password we\'ve ever seen. But it can\'t be longer than 64 characters.';
+          }
+          else {
+            error = null;
+          }
+  
+          if (error !== null) {
+            showInlineNotification(element, inputErrorPasswordElement, error);
+  
+            return false;
+          }
+  
+          clearError(element);
+  
+          return true;
+        }
+  
+        showPasswordElement && showPasswordElement.addEventListener('click', function () {
+          var passwordElement = document.getElementById('password'),
+              currentInputType = passwordElement.getAttribute('type');
+  
+          if (currentInputType === 'password') {
+            passwordElement.setAttribute('type', 'text');
+            this.innerHTML = 'HIDE';
+          }
+          else {
+            passwordElement.setAttribute('type', 'password');
+            this.innerHTML = 'SHOW';
+          }
+        });
+  
+        window.onload = function () {
+          var passwordElement = document.getElementById('password'),
+              KEY_DOWN_EVENT_FIRED = false;
+  
+          if (!passwordElement) { return; }
+  
+          function showPasswordStrengthIndicator() {
+            var passwordIndicatorElement = document.getElementsByClassName('pm-password-strength-indicator')[0];
+  
+            passwordIndicatorElement && (passwordIndicatorElement.style.visibility = 'visible')
+          }
+  
+          passwordElement.addEventListener('keyup', function () {
+            var minimumPercentage = 10,
+                getPercentage = function (entropy) {
+                  return minimumPercentage + Math.floor((entropy * 90) / 128);
+                },
+                value = this.value,
+                strengthElement = document.getElementById('password-strength-text'),
+                indicatorElement = document.getElementById('password-strength-progress-foreground');
+  
+            if (!value || value.length < 8) {
+              if (strengthElement && indicatorElement) {
+                strengthElement.innerHTML = 'Too short';
+                strengthElement.className = '';
+                if (strengthElement.classList) {
+                  strengthElement.classList.add('strength-text');
+                  strengthElement.classList.add('is-short');
+                }
+  
+                indicatorElement.setAttribute('x2', '10%');
+                indicatorElement.className && ( indicatorElement.className.baseVal = '');
+                if (indicatorElement.classList) {
+                  indicatorElement.classList.add('strength-progress-foreground');
+                  indicatorElement.classList.add('is-short');
+                }
+              }
+  
+              return;
+            }
+  
+            var entropy = window.getPasswordEntropy && window.getPasswordEntropy(value), strength;
+  
+            if (!entropy) { return; }
+  
+            if (entropy < 36) {
+              strength = 'weak';
+            }
+            else if (entropy < 60) {
+              strength = 'fair';
+            }
+            else {
+              strength = 'strong';
+            }
+  
+            if (strength) {
+              strengthElement.innerHTML = strength;
+              indicatorElement.setAttribute('x2', getPercentage(entropy) + '%');
+  
+              [strengthElement, indicatorElement].forEach(function (element) {
+                if (element.classList) {
+                  element.classList.remove('is-weak');
+                  element.classList.remove('is-fair');
+                  element.classList.remove('is-strong');
+                  element.classList.add('is-' + strength)
+                }
+              });
+            }
+          });
+  
+          passwordElement.addEventListener('keydown', function () {
+            if (!KEY_DOWN_EVENT_FIRED) {
+  
+              showPasswordStrengthIndicator();
+              KEY_DOWN_EVENT_FIRED = true;
+            }
+          });
+  
+          passwordElement.onblur = function () {
+            var passwordIndicatorElement = document.getElementsByClassName('pm-password-strength-indicator')[0];
+  
+            passwordIndicatorElement && (passwordIndicatorElement.style.visibility = 'hidden')
+          };
+  
+          passwordElement.onfocus = showPasswordStrengthIndicator;
+        };
+  
+        passwordElement && passwordElement.addEventListener('change', function () {
+          validatePassword(passwordElement);
+          passwordElement.addEventListener('keyup', function () {
+            validatePassword(passwordElement);
+          });
+        });
+  
+        resetPasswordForm && resetPasswordForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+  
+          var formData = {
+                token: 'e653e36c9306a09eb5b0e37ea44d18f1a9923febca51245af73957a041505d61',
+                password: passwordElement.value
+              },
+              errorMessage = DEFAULT_ERROR_MESSAGE,
+              xhr = new XMLHttpRequest();
+  
+          // Remove input-validation-error-message, notifications
+          hideGlobalNotification(notificationDiv);
+  
+          [{ inputElement: passwordElement, inlineMsgElement: inputErrorPasswordElement }].forEach(function (obj) {
+            hideInlineNotification(obj.inputElement, obj.inlineMsgElement);
+          });
+  
+          if (!validatePassword(passwordElement)) {
+            return;
+          }
+  
+          xhr.onreadystatechange = function () {
+            if (this.readyState === XMLHttpRequest.DONE) {
+              var responseJSON;
+  
+              try {
+                responseJSON = JSON.parse(this.responseText);
+              }
+              catch (e) {
+                console.error('Error while parsing xhr response: ', e);
+                responseJSON = {};
+              }
+  
+              if (this.status === 200) {
+                // don't remove processing indicator in case of success response
+  
+                if (!responseJSON.redirect) {
+                  return showGlobalNotification(notificationDiv, notificationMsgElement, errorMessage);
+                }
+  
+                return location.assign(responseJSON.redirect);
+              }
+  
+              else {
+                // Remove processing indicator.
+                (resetPwdBtn && resetPwdBtn.classList) &&  resetPwdBtn.classList.remove('pm-btn-processing');
+  
+                if (responseJSON.error && (responseJSON.error.name === 'ValidationError')) {
+                  return showInlineNotification(passwordElement, inputErrorPasswordElement, responseJSON.error.message);
+                }
+  
+                if (responseJSON.error && responseJSON.error.context && responseJSON.error.context.message) {
+                  errorMessage = responseJSON.error.context.message;
+                }
+                else if (responseJSON.error && responseJSON.error.message) {
+                  errorMessage = responseJSON.error.message;
+                }
+  
+                return showGlobalNotification(notificationDiv, notificationMsgElement, errorMessage);
+              }
+            }
+          };
+          
+          console.log( 'PUT password' );
+          // xhr.open('PUT', '/reset-password', true);
+          // xhr.setRequestHeader('X-CSRF-Token', document.getElementsByName('csrfToken')[0].value);
+  
+          // // Add processing indicator.
+          // (resetPwdBtn && resetPwdBtn.classList) && resetPwdBtn.classList.add('pm-btn-processing');
+          // xhr.send(JSON.stringify(formData));
+        });
+      </script>
+
+</body>
+</html>
